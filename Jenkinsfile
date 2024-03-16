@@ -13,6 +13,25 @@ pipeline {
                 echo "Code Cloned Successfully"
             }
         }
+        stage("SonarQube Analysis"){
+            steps{
+                withSonarQubeEnv("sonar"){
+                  sh "$SONAR_HOME/bin/sonar-scanner -Dsonar.projectName=node-app -Dsonar.projectKey=node-app -X"
+                }
+                echo "Build Tested Successfully"
+            }
+        }
+        stage("SonarQube Quality Gate"){
+            steps{
+                echo "Build Tested Successfully"
+            }
+        }
+        stage("OWASP"){
+            steps{
+               dependencyCheck additionalArguments: '--scan ./', odcInstallation: 'OWASP' 
+               dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
         stage("Build"){
             steps{
                 sh 'docker build -t node-app-new:latest .'
@@ -24,29 +43,9 @@ pipeline {
                 echo "Build Tested Successfully"
             }
         }
-        stage("SonarQube Analysis"){
-            steps{
-                withSonarQubeEnv("sonar"){
-                  sh "$SONAR_HOME/bin/sonar-scanner -Dsonar.projectName=node-app -Dsonar.projectKey=node-app -X"
-                }
-                echo "Build Tested Successfully"
-            }
-        }
-        stage("OWASP"){
-            steps{
-                echo "Build Tested Successfully"
-            }
-        }
         stage("Trivy"){
             steps{
                 sh "trivy image node-app-new"
-            }
-        }
-        stage("Deploy"){
-            steps{
-                // sh "docker-compose up -d"
-                sh "docker run -d -p 8000:8000 node-app-new:latest"
-                echo "App Deployed Successfully"
             }
         }
         stage("Push to Private Docker Hub Repo"){
@@ -57,6 +56,13 @@ pipeline {
                 sh "docker push ${env.dockerUser}/node-app-new:latest"
                 }
                 
+            }
+        }
+        stage("Deploy"){
+            steps{
+                // sh "docker-compose up -d"
+                sh "docker run -d -p 8000:8000 node-app-new:latest"
+                echo "App Deployed Successfully"
             }
         }
     }
